@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  app:
+    container_name: app
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app/networkLaravelProject:/app
+    command: tail -f /dev/null # Laat de container gewoon oneindig draaien. Goed voor development omgeving.
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=networkDB
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+    networks:
+      - myNetwork
+
+  db:
+    image: mariadb:10.6.19-focal
+    container_name: database
+    restart: unless-stopped
+    environment:
+      - MARIADB_DATABASE=networkDB
+      - MARIADB_USER=root
+      - MARIADB_PASSWORD=root
+      - MARIADB_ROOT_PASSWORD=root
+    volumes:
+      - ./db_data:/var/lib/mysql:Z
+    networks:
+      - myNetwork
+
+  adminer:
+    image: adminer:4.8.1-standalone
+    restart: unless-stopped
+    ports:
+      - 9090:8080
+    networks:
+      - myNetwork
+
+networks:
+  myNetwork:
+    driver: bridge
