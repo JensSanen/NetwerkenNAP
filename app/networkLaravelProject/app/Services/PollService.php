@@ -32,12 +32,6 @@ class PollService
         return $poll ?: null;
     }
 
-    public function getPollCreatorEmail(int $id): ?string
-    {
-        $poll = $this->getPollById($id);
-        return $poll ? $poll->email_creator : null;
-    }
-
     private function createPoll(array $data): Poll
     {
         try {
@@ -123,7 +117,7 @@ class PollService
             $poll = $this->createPoll($data);
             $this->addDates($poll, $data['dates']);
             $this->addParticipants($poll, $data['emails'], $data['email_creator']);
-            Mail::to($poll->email_creator)->send(new PollCreated($poll));
+            // Mail::to($poll->email_creator)->send(new PollCreated($poll));
             return $poll;
         } catch (ValidationException $e) {
             Log::warning("PollService@createPollWithDatesAndParticipants - Validation error", [
@@ -135,6 +129,15 @@ class PollService
             Log::error("PollService@createPollWithDatesAndParticipants - Error: {$e->getMessage()}", ['data' => $data]);
             throw $e;
         }
+    }
+
+    public function getPollVotes(Poll $poll): array
+    {
+        $votes = [];
+        foreach ($poll->pollDates as $date) {
+            $votes[$date->date] = $date->votes()->count();
+        }
+        return $votes;
     }
 
     private function checkIfEveryoneVoted(Poll $poll): bool
@@ -168,7 +171,7 @@ class PollService
         $bestDate = $this->determineBestDate($poll);
         if ($bestDate) {
             Log::info("PollService@endPoll - Poll {$poll->id} is beëindigd. Beste datum: $bestDate");
-            Mail::to($poll->participants()->pluck('email'))->send(new PollEnded($poll, $bestDate));
+            // Mail::to($poll->participants()->pluck('email'))->send(new PollEnded($poll, $bestDate));
             return $bestDate;
         }
         Log::info("PollService@endPoll - Poll {$poll->id} is beëindigd. Geen stemmen.");

@@ -37,7 +37,7 @@ class ParticipantService
 
             $voteUrl = url("/poll/{$poll_id}/vote/{$participant->id}/{$vote_token}");
 
-            Mail::to($email)->send(new PollInvitation($participant, $voteUrl));
+            // Mail::to($email)->send(new PollInvitation($participant, $voteUrl));
 
             return $participant;
 

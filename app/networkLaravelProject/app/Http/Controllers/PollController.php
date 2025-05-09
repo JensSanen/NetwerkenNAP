@@ -58,8 +58,11 @@ class PollController extends Controller
             abort(403, 'Deze deelnemer hoort niet bij deze poll.');
         }
 
+        $votes = $this->pollService->getPollVotes($poll);
+
         return view('poll', [
             'poll' => $poll,
+            'votes' => $votes,
             'participant' => $participant,
         ]);
     }
