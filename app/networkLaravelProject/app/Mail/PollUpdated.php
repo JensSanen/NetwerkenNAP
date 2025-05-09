@@ -22,7 +22,7 @@ class PollUpdated extends Mailable
 
     public function build()
     {
-        return $this->subject('Nieuwe stem uitgebracht')
+        return $this->subject('Er is gestemd in de poll "' . $this->poll->title . '"')
                     ->view('mails.poll_updated');
     }
 }

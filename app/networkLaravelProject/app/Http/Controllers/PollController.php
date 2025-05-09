@@ -46,33 +46,44 @@ class PollController extends Controller
         }
     }
 
-    public function showVotingPage(Poll $poll, Participant $participant, $token)
+    public function addDates(Request $request, Poll $poll)
     {
-        // Verifieer of token klopt
-        if ($participant->vote_token !== $token) {
-            abort(403, 'Ongeldige of verlopen stemlink.');
+        try {
+            $validated = $request->validate([
+                'dates' => 'required|string',
+            ]);
+
+            $dates = $this->pollService->addDates($poll, $validated['dates']);
+
+            // Log de aanmaak van de poll dates
+            Log::info("PollController@addDates", ['poll' => $poll, 'dates' => $dates]);
+
+            return response()->json(['message' => 'Data succesvol toegevoegd', 'dates' => $dates], 201);
+        } catch (ValidationException $e) {
+            return response()->json(['message' => 'Validatie mislukt', 'errors' => $e->errors()], 422);
+        } catch (\Throwable $e) {
+            Log::error("PollController@addDates - Fout: {$e->getMessage()}", ['poll_id' => $poll->id]);
+            return response()->json(['message' => 'Interne fout bij toevoegen data'], 500);
         }
-
-        // (Optioneel) check of deelnemer bij deze poll hoort
-        if ($participant->poll_id !== $poll->id) {
-            abort(403, 'Deze deelnemer hoort niet bij deze poll.');
-        }
-
-        $votes = $this->pollService->getPollVotes($poll);
-
-        return view('poll', [
-            'poll' => $poll,
-            'votes' => $votes,
-            'participant' => $participant,
-        ]);
     }
 
-    public function checkEndPoll(Poll $poll) {
-        $date = $this->pollService->checkIfEveryoneVotedAndEndPoll($poll);
-        if ($date) {
-            return response()->json(['message' => 'Poll succesvol beëindigd', 'date' => $date], 200);
-        } else {
-            return response()->json(['message' => 'Poll is nog niet beëindigd'], 200);
+    public function addParticipants(Request $request, Poll $poll) {
+        try {
+            $validated = $request->validate([
+                'emails' => 'required|string',
+            ]);
+
+            $participants = $this->pollService->addParticipants($poll, $validated['emails']);
+
+            // Log de aanmaak van de participants
+            Log::info("PollController@addParticipants", ['poll' => $poll, 'participants' => $participants]);
+
+            return response()->json(['message' => 'Deelnemer(s) succesvol toegevoegd', 'participants' => $participants], 201);
+        } catch (ValidationException $e) {
+            return response()->json(['message' => 'Validatie mislukt', 'errors' => $e->errors()], 422);
+        } catch (\Throwable $e) {
+            Log::error("PollController@addParticipants - Fout: {$e->getMessage()}", ['poll_id' => $poll->id]);
+            return response()->json(['message' => 'Interne fout bij toevoegen deelnemers'], 500);
         }
     }
 
@@ -87,4 +98,43 @@ class PollController extends Controller
             return response()->json(['message' => 'Interne fout bij beëindigen poll'], 500);
         }
     }
+
+    public function showVotingPage(Poll $poll, Participant $participant, $token)
+    {
+        // Verifieer of token klopt
+        if ($participant->vote_token !== $token) {
+            abort(403, 'Ongeldige of verlopen stemlink.');
+        }
+
+        if ($participant->poll_id !== $poll->id) {
+            abort(403, 'Deze deelnemer hoort niet bij deze poll.');
+        }
+
+        $votes = $this->pollService->getPollVotes($poll);
+
+        // Check of participant het e-mailadres van de creator is
+        $isCreator = $participant->email === $poll->email_creator;
+
+        return view('poll', [
+            'poll' => $poll,
+            'votes' => $votes,
+            'participant' => $participant,
+            'isCreator' => $isCreator,
+            'viewOnly' => false,
+        ]);
+    }
+
+    public function showVotingPageViewOnly(Poll $poll)
+    {
+        $votes = $this->pollService->getPollVotes($poll);
+
+        return view('poll', [
+            'poll' => $poll,
+            'votes' => $votes,
+            'participant' => null,
+            'isCreator' => false,
+            'viewOnly' => true,
+        ]);
+    }
+
 }

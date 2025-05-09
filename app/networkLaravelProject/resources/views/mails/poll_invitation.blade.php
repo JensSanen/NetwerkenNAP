@@ -1,25 +1,50 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html>
 <head>
     <meta charset="UTF-8">
     <title>Uitnodiging om te stemmen</title>
 </head>
-<body>
-    <h2>Hallo,</h2>
-    <p>Je bent uitgenodigd om te stemmen op een datum voor een evenement.</p>
+<body style="font-family: Arial, sans-serif; background-color: #f6f6f6; margin: 0; padding: 20px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"
+           style="max-width: 600px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
+        <tr>
+            <td>
+                <h2 style="color: #333333;">🗳️ Je bent uitgenodigd om te stemmen</h2>
+                <p style="font-size: 16px; color: #555555;">
+                    Hallo, je bent uitgenodigd om je voorkeur aan te geven voor een datum voor het volgende evenement:
+                </p>
 
-    <p><strong>Poll titel:</strong> {{ $participant->poll->title }}</p>
-    <p><strong>Locatie:</strong> {{ $participant->poll->location }}</p>
-    <p><strong>Beschrijving:</strong> {{ $participant->poll->description }}</p>
+                <table cellpadding="0" cellspacing="0" border="0" style="margin: 20px 0; font-size: 15px; color: #444;">
+                    <tr>
+                        <td style="padding: 5px 0;"><strong>📌 Titel:</strong></td>
+                        <td style="padding: 5px 10px;">{{ $participant->poll->title }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 0;"><strong>📍 Locatie:</strong></td>
+                        <td style="padding: 5px 10px;">{{ $participant->poll->location }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 0;"><strong>📝 Beschrijving:</strong></td>
+                        <td style="padding: 5px 10px;">{{ $participant->poll->description }}</td>
+                    </tr>
+                </table>
 
-    <p>Klik op onderstaande knop om je voorkeuren aan te geven:</p>
+                <p style="margin: 20px 0;">
+                    <a href="{{ $voteUrl }}" style="display: inline-block; background-color: #28a745; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-size: 16px;">
+                        Stem nu
+                    </a>
+                </p>
 
-    <p>
-        <a href="{{ $voteUrl }}" style="padding: 10px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px;">
-            Stem nu
-        </a>
-    </p>
+                <p style="font-size: 14px; color: #888888;">
+                    Heb je deze uitnodiging per vergissing ontvangen? Dan kun je deze e-mail negeren.
+                </p>
 
-    <p>Bedankt!</p>
+                <hr style="margin-top: 30px; border: none; border-top: 1px solid #eeeeee;">
+                <p style="font-size: 12px; color: #aaaaaa; text-align: center;">
+                    &copy; {{ date('Y') }} JouwPollPlatform. Alle rechten voorbehouden.
+                </p>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

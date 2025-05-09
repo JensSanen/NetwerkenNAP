@@ -14,6 +14,11 @@ use App\Mail\PollInvitation;
 
 class ParticipantService
 {
+    public function getParticipantByEmail(string $email): ?Participant
+    {
+        $participant = Participant::where('email', $email)->first();
+        return $participant ?: null;
+    }
     public function createParticipant(int $poll_id, string $email): Participant
     {
         try {
@@ -35,9 +40,8 @@ class ParticipantService
             ]);
 
 
-            $voteUrl = url("/poll/{$poll_id}/vote/{$participant->id}/{$vote_token}");
-
-            // Mail::to($email)->send(new PollInvitation($participant, $voteUrl));
+            $vote_url = url("/poll/{$poll_id}/vote/{$participant->id}/{$vote_token}");
+            Mail::to($email)->send(new PollInvitation($participant, $vote_url));
 
             return $participant;
 

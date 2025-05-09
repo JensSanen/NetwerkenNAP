@@ -20,7 +20,7 @@ class VoteController extends Controller
         $this->pollService = $PollService;
     }
 
-    public function store(Request $request)
+    public function vote(Request $request)
     {
         try {
             $validated = $request->validate([

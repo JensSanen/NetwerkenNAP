@@ -52,7 +52,7 @@ class VoteService
 
             $poll = $this->pollService->getPollById($data['poll_id']);
             $participant = Participant::find($data['participant_id']);
-            // Mail::to($poll->email_creator)->send(new PollUpdated($poll, $participant));
+            Mail::to($poll->email_creator)->send(new PollUpdated($poll, $participant));
 
         } catch (ValidationException $e) {
             Log::warning("VoteService@storeVote - Validation error", [

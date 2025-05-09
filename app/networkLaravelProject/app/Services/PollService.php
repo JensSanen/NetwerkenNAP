@@ -2,14 +2,16 @@
 
 namespace App\Services;
 
+
 use Throwable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 use App\Models\Poll;
-
+use App\Models\Participant;
 use App\Mail\PollCreated;
 use App\Mail\PollEnded;
 use App\Services\PollDateService;
@@ -31,6 +33,18 @@ class PollService
         $poll = Poll::find($id);
         return $poll ?: null;
     }
+
+    public function getAllParticipants(Poll $poll): Collection
+    {
+        return $poll->participants()->get();
+    }
+
+    private function getCreator(Poll $poll): ?Participant
+    {
+        $creator = $poll->participants()->where('email', $poll->email_creator)->first();
+        return $creator ?: null;
+    }
+
 
     private function createPoll(array $data): Poll
     {
@@ -64,17 +78,21 @@ class PollService
         }
     }
 
-    private function addDates(Poll $poll, string $dates): void
+    public function addDates(Poll $poll, string $dates): array
     {
-        foreach (explode(',', $dates) as $date) {
+        $allDates = array_unique(array_map('trim', explode(',', $dates)));
+        $pollDates = [];
+
+        foreach ($allDates as $date) {
             try {
-                $this->pollDateService->createPollDate($poll->id, trim($date));
+                $pollDate = $this->pollDateService->createPollDate($poll->id, $date);
+                $pollDates[] = $pollDate;
             } catch (ValidationException $e) {
                 Log::warning("PollService@addDates - Ongeldige datum: $date", [
                     'poll_id' => $poll->id,
                     'errors' => $e->errors(),
                 ]);
-                throw $e; // of: continue als je wil doorgaan met volgende datum
+                throw $e;
             } catch (Throwable $e) {
                 Log::error("PollService@addDates - Fout bij datum: $date", [
                     'poll_id' => $poll->id,
@@ -83,18 +101,20 @@ class PollService
                 throw $e;
             }
         }
+        return $pollDates;
     }
 
-    private function addParticipants(Poll $poll, string $emails, string $creatorEmail): void
+
+    public function addParticipants(Poll $poll, string $emails): array
     {
-        $allEmails = array_unique(array_merge(
-            array_map('trim', explode(',', $emails)),
-            [$creatorEmail]
-        ));
+        $allEmails = array_unique(array_map('trim', explode(',', $emails)));
+
+        $participants = [];
 
         foreach ($allEmails as $email) {
             try {
-                $this->participantService->createParticipant($poll->id, $email);
+                $participant = $this->participantService->createParticipant($poll->id, $email);
+                $participants[] = $participant;
             } catch (ValidationException $e) {
                 Log::warning("PollService@addParticipants - Ongeldig e-mailadres: $email", [
                     'poll_id' => $poll->id,
@@ -109,6 +129,7 @@ class PollService
                 throw $e;
             }
         }
+        return $participants;
     }
 
     public function createPollWithDatesAndParticipants(array $data): Poll
@@ -116,8 +137,11 @@ class PollService
         try {
             $poll = $this->createPoll($data);
             $this->addDates($poll, $data['dates']);
-            $this->addParticipants($poll, $data['emails'], $data['email_creator']);
-            // Mail::to($poll->email_creator)->send(new PollCreated($poll));
+            $this->addParticipants($poll, $data['email_creator']);
+            $this->addParticipants($poll, $data['emails']);
+            $creator = $this->getCreator($poll);
+            $creator_url = url("/poll/{$poll->id}/vote/{$creator->id}/{$creator->vote_token}");
+            Mail::to($poll->email_creator)->send(new PollCreated($poll, $creator_url));
             return $poll;
         } catch (ValidationException $e) {
             Log::warning("PollService@createPollWithDatesAndParticipants - Validation error", [
@@ -171,7 +195,10 @@ class PollService
         $bestDate = $this->determineBestDate($poll);
         if ($bestDate) {
             Log::info("PollService@endPoll - Poll {$poll->id} is beëindigd. Beste datum: $bestDate");
-            // Mail::to($poll->participants()->pluck('email'))->send(new PollEnded($poll, $bestDate));
+            $participants = $this->getAllParticipants($poll);
+            foreach ($participants as $participant) {
+                Mail::to($participant->email)->send(new PollEnded($poll, $bestDate));
+            }
             return $bestDate;
         }
         Log::info("PollService@endPoll - Poll {$poll->id} is beëindigd. Geen stemmen.");

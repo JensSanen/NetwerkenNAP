@@ -22,7 +22,7 @@ class PollEnded extends Mailable
 
     public function build()
     {
-        return $this->subject('Poll is beëindigd')
+        return $this->subject('De poll "' . $this->poll->title . '" is beëindigd')
                     ->view('mails.poll_ended');
     }
 }
