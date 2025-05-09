@@ -6,59 +6,42 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
-use App\Models\Vote;
-use App\Models\Participant;
+use App\Services\VoteService;
+use App\Services\PollService;
 
 class VoteController extends Controller
 {
+    private $voteService;
+    private $pollService;
+
+    public function __construct(VoteService $voteService, PollService $PollService)
+    {
+        $this->voteService = $voteService;
+        $this->pollService = $PollService;
+    }
+
     public function store(Request $request)
     {
         try {
-            $request->validate([
+            $validated = $request->validate([
                 'poll_id' => 'required|integer|exists:polls,id',
                 'participant_id' => 'required|integer|exists:participants,id',
                 'dates' => 'required|array',
                 'dates.*' => 'integer|exists:poll_dates,id',
             ]);
 
-            $pollId = $request->input('poll_id');
-            $participantId = $request->input('participant_id');
-            $dates = $request->input('dates');
+            $poll = $this->pollService->getPollById($validated['poll_id']);
 
-            Log::info("VoteController@store", [
-                'poll_id' => $pollId,
-                'participant_id' => $participantId,
-                'dates' => $dates,
-            ]);
+            $this->voteService->storeVote($validated);
+            $this->pollService->checkIfEveryoneVotedAndEndPoll($poll);
 
-            // Verwijder eerst eerdere stemmen van deze deelnemer (optioneel)
-            Vote::where('participant_id', $participantId)->delete();
-
-            // Voeg stemmen toe voor elke geselecteerde datum
-            foreach ($dates as $dateId) {
-                Vote::create([
-                    'poll_date_id' => $dateId,
-                    'participant_id' => $participantId,
-                ]);
-            }
-
-            Participant::where('id', $participantId)->update(['has_voted' => true]);
-
-            return response()->json([
-                'message' => 'Stemmen succesvol opgeslagen',
-            ], 201);
+            return response()->json(['message' => 'Stemmen succesvol opgeslagen'], 201);
 
         } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'Validatie mislukt',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error("VoteController@store - Error: " . $e->getMessage());
-
-            return response()->json([
-                'message' => 'Er is een interne fout opgetreden',
-            ], 500);
+            return response()->json(['message' => 'Validatie mislukt', 'errors' => $e->errors()], 422);
+        } catch (\Throwable $e) {
+            Log::error("VoteController@store - Error: {$e->getMessage()}");
+            return response()->json(['message' => 'Interne serverfout'], 500);
         }
     }
 }

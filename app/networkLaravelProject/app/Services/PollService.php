@@ -11,6 +11,7 @@ use Illuminate\Validation\ValidationException;
 use App\Models\Poll;
 
 use App\Mail\PollCreated;
+use App\Mail\PollEnded;
 use App\Services\PollDateService;
 use App\Services\ParticipantService;
 
@@ -23,6 +24,18 @@ class PollService
     {
         $this->pollDateService = $pollDateService;
         $this->participantService = $participantService;
+    }
+
+    public function getPollById(int $id): ?Poll
+    {
+        $poll = Poll::find($id);
+        return $poll ?: null;
+    }
+
+    public function getPollCreatorEmail(int $id): ?string
+    {
+        $poll = $this->getPollById($id);
+        return $poll ? $poll->email_creator : null;
     }
 
     private function createPoll(array $data): Poll
@@ -122,5 +135,52 @@ class PollService
             Log::error("PollService@createPollWithDatesAndParticipants - Error: {$e->getMessage()}", ['data' => $data]);
             throw $e;
         }
+    }
+
+    private function checkIfEveryoneVoted(Poll $poll): bool
+    {
+        $participants = $poll->participants()->get();
+        $votedParticipants = $participants->filter(function ($participant) {
+            return $participant->has_voted;
+        });
+
+        return $votedParticipants->count() === $participants->count();
+    }
+
+    private function determineBestDate(Poll $poll): ?string
+    {
+        $dates = $poll->pollDates()->get();
+        $bestDate = null;
+        $maxVotes = 0;
+
+        foreach ($dates as $date) {
+            $votes = $date->votes()->count();
+            if ($votes > $maxVotes) {
+                $maxVotes = $votes;
+                $bestDate = $date->date;
+            }
+        }
+        return $bestDate;
+    }
+
+    public function endPoll(Poll $poll): ?string
+    {
+        $bestDate = $this->determineBestDate($poll);
+        if ($bestDate) {
+            Log::info("PollService@endPoll - Poll {$poll->id} is beëindigd. Beste datum: $bestDate");
+            Mail::to($poll->participants()->pluck('email'))->send(new PollEnded($poll, $bestDate));
+            return $bestDate;
+        }
+        Log::info("PollService@endPoll - Poll {$poll->id} is beëindigd. Geen stemmen.");
+        return null;
+    }
+
+    public function checkIfEveryoneVotedAndEndPoll(Poll $poll): ?string
+    {
+        if ($this->checkIfEveryoneVoted($poll)) {
+            return $this->endPoll($poll);
+        }
+        Log::info("PollService@checkIfEveryoneVotedAndEndPoll - Niet iedereen heeft gestemd voor poll {$poll->id}");
+        return null;
     }
 }

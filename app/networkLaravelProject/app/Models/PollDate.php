@@ -14,4 +14,9 @@ class PollDate extends Model
     {
         return $this->belongsTo(Poll::class, "poll_id", "id");
     }
+
+    public function votes()
+    {
+        return $this->hasMany(Vote::class, "poll_date_id", "id");
+    }
 }

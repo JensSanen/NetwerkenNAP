@@ -19,15 +19,6 @@ class PollController extends Controller
         $this->pollService = $pollService;
     }
 
-    public function show($id)
-    {
-        $poll = Poll::with(['pollDates', 'participants'])->findOrFail($id);
-
-        return view('poll', [
-            'poll' => $poll,
-        ]);
-    }
-
     public function createPoll(Request $request)
     {
         try {
@@ -73,29 +64,24 @@ class PollController extends Controller
         ]);
     }
 
-    public function checkEverybodyVoted(Poll $poll) {
-        try {
-            $participantsAmount = Participant::where('poll_id', $poll->id)->count();
-            $votesAmount = Participant::where('poll_id', $poll->id)->where('has_voted', true)->count();
-
-            if ($participantsAmount === $votesAmount) {
-                return response()->json([
-                    'message' => 'Alle deelnemers hebben gestemd.',
-                ], 200);
-            } else {
-                return response()->json([
-                    'message' => 'Niet alle deelnemers hebben gestemd.',
-                ], 200);
-            }
+    public function checkEndPoll(Poll $poll) {
+        $date = $this->pollService->checkIfEveryoneVotedAndEndPoll($poll);
+        if ($date) {
+            return response()->json(['message' => 'Poll succesvol beëindigd', 'date' => $date], 200);
+        } else {
+            return response()->json(['message' => 'Poll is nog niet beëindigd'], 200);
         }
-        catch (\Exception $e) {
-            Log::error("PollController@checkEverybodyVoted - Error: " . $e->getMessage(), [
-                'poll_id' => $poll->id,
-            ]);
-            return response()->json([
-                'message' => 'Fout bij het controleren van stemmen',
-                'error' => $e->getMessage(),
-            ], 500);
+    }
+
+    public function endPoll(Poll $poll) {
+        try {
+            $date = $this->pollService->endPoll($poll);
+            return response()->json(['message' => 'Poll succesvol beëindigd', 'date' => $date], 200);
+        } catch (ValidationException $e) {
+            return response()->json(['message' => 'Validatie mislukt', 'errors' => $e->errors()], 422);
+        } catch (\Throwable $e) {
+            Log::error("PollController@endPoll - Fout: {$e->getMessage()}", ['poll_id' => $poll->id]);
+            return response()->json(['message' => 'Interne fout bij beëindigen poll'], 500);
         }
     }
 }
