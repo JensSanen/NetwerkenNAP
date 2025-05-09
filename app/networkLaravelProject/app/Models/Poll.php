@@ -15,4 +15,13 @@ class Poll extends Model
         'description',
         'location'
     ];
+
+    public function pollDates()
+    {
+        return $this->hasMany(PollDate::class, 'poll_id', 'id');
+    }
+    public function participants()
+    {
+        return $this->hasMany(Participant::class, 'poll_id', 'id');
+    }
 }

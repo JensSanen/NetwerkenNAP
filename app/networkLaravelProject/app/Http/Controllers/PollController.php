@@ -5,13 +5,24 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Mail;
+
 
 use App\Models\Poll;
+use App\Mail\PollCreated;
 use App\Http\Controllers\PollDateController;
 use App\Http\Controllers\ParticipantController;
 
 class PollController extends Controller
 {
+    public function show($id)
+    {
+        $poll = Poll::with(['pollDates', 'participants'])->findOrFail($id);
+
+        return view('poll', [
+            'poll' => $poll,
+        ]);
+    }
 
     public function createPoll(Request $request)
     {
@@ -63,6 +74,9 @@ class PollController extends Controller
                 $participantController->store($participantRequest);
             }
 
+            // Stuur een e-mail naar de creator
+            Mail::to($poll->email_creator)->send(new PollCreated($poll));
+
             return response()->json([
                 'message' => 'Poll succesvol aangemaakt',
                 'poll' => $poll,
@@ -85,6 +99,28 @@ class PollController extends Controller
                 'message' => 'Fout bij aanmaken poll',
                 'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function getPollInfo($id)
+    {
+        try {
+            $poll = Poll::with(['pollDates', 'participants'])->findOrFail($id);
+            Log::info("PollController@getPollInfo", [
+                'poll_id' => $id,
+                'poll' => $poll,
+            ]);
+
+            return response()->json([
+                'poll' => $poll,
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error("PollController@getPollInfo - Error: " . $e->getMessage(), [
+                'poll_id' => $id,
+            ]);
+            return response()->json([
+                'message' => 'Poll niet gevonden',
+            ], 404);
         }
     }
 }
