@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 use App\Models\Vote;
+use App\Models\Participant;
 
 class VoteController extends Controller
 {
@@ -40,6 +41,8 @@ class VoteController extends Controller
                     'participant_id' => $participantId,
                 ]);
             }
+
+            Participant::where('id', $participantId)->update(['has_voted' => true]);
 
             return response()->json([
                 'message' => 'Stemmen succesvol opgeslagen',

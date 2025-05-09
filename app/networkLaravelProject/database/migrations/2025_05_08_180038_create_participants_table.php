@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('email', 255)->nullable(false);
             $table->integer('poll_id')->nullable(false);
             $table->boolean('has_voted')->default(false);
-            $table->string('vote_token', 64)->unique()->nullable(false);
+            $table->string('vote_token', 64)->nullable(false);
             $table->timestamps();
 
             // Foreign key constraint

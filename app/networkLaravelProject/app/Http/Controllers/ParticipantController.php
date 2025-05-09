@@ -31,16 +31,7 @@ class ParticipantController extends Controller
                 ]
             ));
 
-            $voteUrl = url("/poll/{$participant->poll_id}/vote/{$participant->id}/{$participant->vote_token}");
-
-            Log::info("ParticipantController@store - Vote URL: " . $voteUrl, [
-                'poll_id' => $request->input('poll_id'),
-                'email' => $request->input('email'),
-                'vote_token' => $token,
-                'url' => $voteUrl,
-            ]);
-
-            Mail::to($participant->email)->send(new PollInvitation($participant, $voteUrl));
+ 
 
 
             return response()->json([

@@ -5,17 +5,20 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Mail;
-
 
 use App\Models\Poll;
 use App\Models\Participant;
-use App\Mail\PollCreated;
-use App\Http\Controllers\PollDateController;
-use App\Http\Controllers\ParticipantController;
+use App\Services\PollService;
 
 class PollController extends Controller
 {
+    private $pollService;
+
+    public function __construct(PollService $pollService)
+    {
+        $this->pollService = $pollService;
+    }
+
     public function show($id)
     {
         $poll = Poll::with(['pollDates', 'participants'])->findOrFail($id);
@@ -28,100 +31,27 @@ class PollController extends Controller
     public function createPoll(Request $request)
     {
         try {
-            // Validatie
-            $request->validate([
+            $validated = $request->validate([
                 'email_creator' => 'required|email|max:255',
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'location' => 'required|string|max:255',
                 'dates' => 'required|string',
+                'emails' => 'nullable|string'
             ]);
 
-            Log::info("PollController@createPoll", [
-                'email_creator' => $request->input('email_creator'),
-                'title' => $request->input('title'),
-                'description' => $request->input('description'),
-                'location' => $request->input('location'),
-                'dates' => $request->input('dates'),
-                'emails' => $request->input('emails'),
-            ]);
+            $poll = $this->pollService->createPollWithDatesAndParticipants($validated);
 
-            // Poll aanmaken
-            $poll = Poll::create($request->only(['email_creator', 'title', 'description', 'location']));
+            // Log de aanmaak van de poll
+            Log::info("PollController@createPoll", ['poll' => $poll]);
 
-            // Split dates en voeg ze toe via de controller
-            $dates = array_map('trim', explode(',', $request->input('dates')));
-            $pollDateController = new PollDateController();
-
-            foreach ($dates as $date) {
-                $pollDateRequest = new Request([
-                    'poll_id' => $poll->id,
-                    'date' => $date,
-                ]);
-
-                $pollDateController->store($pollDateRequest);
-            }
-
-            // Split emails en voeg ze toe via de controller
-            $emails = array_map('trim', explode(',', $request->input('emails')));
-            $participantController = new ParticipantController();
-            $emails = array_merge($emails, [$request->input('email_creator')]); // Voeg de creator toe aan de deelnemerslijst
-            foreach ($emails as $email) {
-                $participantRequest = new Request([
-                    'poll_id' => $poll->id,
-                    'email' => $email,
-                ]);
-
-                $participantController->store($participantRequest);
-            }
-
-            // Stuur een e-mail naar de creator
-            Mail::to($poll->email_creator)->send(new PollCreated($poll));
-
-            return response()->json([
-                'message' => 'Poll succesvol aangemaakt',
-                'poll' => $poll,
-            ], 201);
+            return response()->json(['message' => 'Poll succesvol aangemaakt', 'poll' => $poll], 201);
 
         } catch (ValidationException $e) {
-            return response()->json([
-                'message' => 'Validatie mislukt',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error("PollController@createPoll - Error: " . $e->getMessage(), [
-                'email_creator' => $request->input('email_creator'),
-                'title' => $request->input('title'),
-                'description' => $request->input('description'),
-                'location' => $request->input('location'),
-                'dates' => $request->input('dates'),
-            ]);
-            return response()->json([
-                'message' => 'Fout bij aanmaken poll',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    public function getPollInfo($id)
-    {
-        try {
-            $poll = Poll::with(['pollDates', 'participants'])->findOrFail($id);
-            Log::info("PollController@getPollInfo", [
-                'poll_id' => $id,
-                'poll' => $poll,
-            ]);
-
-            return response()->json([
-                'poll' => $poll,
-            ], 200);
-        } catch (\Exception $e) {
-            Log::error("PollController@getPollInfo - Error: " . $e->getMessage(), [
-                'poll_id' => $id,
-            ]);
-            return response()->json([
-                'message' => 'Poll niet gevonden',
-            ], 404);
+            return response()->json(['message' => 'Validatie mislukt', 'errors' => $e->errors()], 422);
+        } catch (\Throwable $e) {
+            Log::error("PollController@createPoll - Fout: {$e->getMessage()}", ['data' => $request->all()]);
+            return response()->json(['message' => 'Interne fout bij aanmaken poll'], 500);
         }
     }
 
@@ -141,5 +71,31 @@ class PollController extends Controller
             'poll' => $poll,
             'participant' => $participant,
         ]);
+    }
+
+    public function checkEverybodyVoted(Poll $poll) {
+        try {
+            $participantsAmount = Participant::where('poll_id', $poll->id)->count();
+            $votesAmount = Participant::where('poll_id', $poll->id)->where('has_voted', true)->count();
+
+            if ($participantsAmount === $votesAmount) {
+                return response()->json([
+                    'message' => 'Alle deelnemers hebben gestemd.',
+                ], 200);
+            } else {
+                return response()->json([
+                    'message' => 'Niet alle deelnemers hebben gestemd.',
+                ], 200);
+            }
+        }
+        catch (\Exception $e) {
+            Log::error("PollController@checkEverybodyVoted - Error: " . $e->getMessage(), [
+                'poll_id' => $poll->id,
+            ]);
+            return response()->json([
+                'message' => 'Fout bij het controleren van stemmen',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }
