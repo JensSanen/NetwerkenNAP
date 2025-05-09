@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Mail;
 
 
 use App\Models\Poll;
+use App\Models\Participant;
 use App\Mail\PollCreated;
 use App\Http\Controllers\PollDateController;
 use App\Http\Controllers\ParticipantController;
@@ -122,5 +123,23 @@ class PollController extends Controller
                 'message' => 'Poll niet gevonden',
             ], 404);
         }
+    }
+
+    public function showVotingPage(Poll $poll, Participant $participant, $token)
+    {
+        // Verifieer of token klopt
+        if ($participant->vote_token !== $token) {
+            abort(403, 'Ongeldige of verlopen stemlink.');
+        }
+
+        // (Optioneel) check of deelnemer bij deze poll hoort
+        if ($participant->poll_id !== $poll->id) {
+            abort(403, 'Deze deelnemer hoort niet bij deze poll.');
+        }
+
+        return view('poll', [
+            'poll' => $poll,
+            'participant' => $participant,
+        ]);
     }
 }

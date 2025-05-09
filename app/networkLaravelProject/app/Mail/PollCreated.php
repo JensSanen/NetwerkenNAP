@@ -19,15 +19,8 @@ class PollCreated extends Mailable
 
     public function build()
     {
-        Log::info("PollCreated@build", [
-            'poll_id' => $this->poll->id,
-            'email_creator' => $this->poll->email_creator,
-            'title' => $this->poll->title,
-            'description' => $this->poll->description,
-            'location' => $this->poll->location,
-        ]);
         return $this->subject('Je poll is succesvol aangemaakt!')
-                    ->view('emails.poll_created');
+                    ->view('mails.poll_created');
     }
 }
 

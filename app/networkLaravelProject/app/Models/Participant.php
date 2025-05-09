@@ -8,7 +8,7 @@ class Participant extends Model
 {
     protected $table = 'participants';
     protected $primaryKey = 'id';
-    protected $fillable = ['email', 'poll_id', 'has_voted'];
+    protected $fillable = ['email', 'poll_id', 'has_voted', 'vote_token'];
 
     protected $casts = [
         'has_voted' => 'boolean',

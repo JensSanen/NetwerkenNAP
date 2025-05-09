@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Participant;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
+
+use App\Mail\PollInvitation;
+use App\Models\Participant;
 
 class ParticipantController extends Controller
 {
@@ -18,12 +21,26 @@ class ParticipantController extends Controller
                 'email' => 'required|email',
             ]);
 
-            Log::info("ParticipantController@store", [
+            $token = Str::random(32);
+
+            $participant = Participant::create(array_merge(
+                $request->only(['email', 'poll_id']),
+                [
+                    'has_voted' => false,
+                    'vote_token' => $token,
+                ]
+            ));
+
+            $voteUrl = url("/poll/{$participant->poll_id}/vote/{$participant->id}/{$participant->vote_token}");
+
+            Log::info("ParticipantController@store - Vote URL: " . $voteUrl, [
                 'poll_id' => $request->input('poll_id'),
                 'email' => $request->input('email'),
+                'vote_token' => $token,
+                'url' => $voteUrl,
             ]);
 
-            $participant = Participant::create($request->only(['email', 'poll_id']));
+            Mail::to($participant->email)->send(new PollInvitation($participant, $voteUrl));
 
 
             return response()->json([

@@ -7,5 +7,7 @@ Route::get('/', function () {
     return view('home');
 })->name('home');
 
+Route::get('/poll/{poll}/vote/{participant}/{token}', [PollController::class, 'showVotingPage']);
+
 Route::get('/poll/{id}', [PollController::class, 'show'])->name('poll_created');
 
