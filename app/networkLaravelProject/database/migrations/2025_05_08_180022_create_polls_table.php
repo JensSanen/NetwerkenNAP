@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('polls', function (Blueprint $table) {
             $table->integer('id')->autoIncrement()->primary();
+            $table->string('email_creator', 255)->nullable(false);
             $table->string('title', 255)->nullable(false);
             $table->text('description')->nullable();
             $table->string('location', 255)->nullable(false);

@@ -15,6 +15,7 @@ return new class extends Migration
             $table->integer('id')->autoIncrement()->primary();
             $table->integer('poll_id')->nullable(false);
             $table->date('date')->nullable(false);
+            $table->timestamps();
 
             $table->foreign('poll_id')
                   ->references('id')
@@ -22,7 +23,7 @@ return new class extends Migration
                   ->onDelete('cascade');
         });
     }
-    
+
     public function down(): void
     {
         Schema::dropIfExists('poll_dates');
