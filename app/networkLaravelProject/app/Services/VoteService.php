@@ -15,9 +15,11 @@ use App\Models\Vote;
 class VoteService
 {
     private $pollService;
+    private $participantService;
 
-    public function __construct(PollService $pollService)
+    public function __construct(PollService $pollService, ParticipantService $participantService)
     {
+        $this->participantService = $participantService;
         $this->pollService = $pollService;
     }
     public function storeVote(array $data): void
@@ -47,12 +49,13 @@ class VoteService
             }
 
             // Markeer als gestemd
-            Participant::where('id', $data['participant_id'])->update(['has_voted' => true]);
-
+            $participant = $this->participantService->getParticipantById($data['participant_id']);
+            $this->participantService->setParticipantVoted($participant->id);
 
             $poll = $this->pollService->getPollById($data['poll_id']);
-            $participant = Participant::find($data['participant_id']);
-            Mail::to($poll->email_creator)->send(new PollUpdated($poll, $participant));
+            $creator_url = $this->pollService->getCreatorURL($poll);
+
+            Mail::to($poll->email_creator)->send(new PollUpdated($poll, $participant, $creator_url));
 
         } catch (ValidationException $e) {
             Log::warning("VoteService@storeVote - Validation error", [

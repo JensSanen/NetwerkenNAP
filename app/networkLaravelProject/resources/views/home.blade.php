@@ -22,52 +22,65 @@
                         @csrf
                         <div class="mb-3">
                             <label for="email_creator" class="form-label">Jouw e-mailadres</label>
-                            <input type="email" name="email_creator" id="email_creator" class="form-control" placeholder="piet@example.com" required>
+                            <input type="email" name="email_creator" class="form-control" required>
                         </div>
 
                         <div class="mb-3">
-                            <label for="title" class="form-label">Titel van de poll</label>
-                            <input type="text" name="title" id="title" class="form-control" placeholder="Bijv. BBQ op zondag" required>
+                            <label for="title" class="form-label">Titel</label>
+                            <input type="text" name="title" class="form-control" required>
                         </div>
 
                         <div class="mb-3">
                             <label for="description" class="form-label">Beschrijving</label>
-                            <textarea name="description" id="description" class="form-control" rows="3" placeholder="Bijv. BBQ bij mij in de tuin" required></textarea>
+                            <textarea name="description" class="form-control"></textarea>
                         </div>
 
                         <div class="mb-3">
                             <label for="location" class="form-label">Locatie</label>
-                            <input type="text" name="location" id="location" class="form-control" placeholder="Bijv. Hasselt" required>
+                            <input type="text" name="location" class="form-control" required>
                         </div>
 
                         <div class="mb-3">
-                            <label for="dates" class="form-label">Beschikbare datums (gescheiden door komma's)</label>
-                            <input type="text" name="dates" id="dates" class="form-control" placeholder="01-06-2025, 02-06-2025, 03-06-2025" pattern="\d{2}-\d{2}-\d{4}(,\s*\d{2}-\d{2}-\d{4})*" required>
+                            <label class="form-label">Datums</label>
+                            <div id="date-inputs">
+                                <input type="date" name="dates[]" class="form-control mb-2">
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="addDateInput()">+ Datum</button>
                         </div>
 
                         <div class="mb-3">
-                            <label for="emails" class="form-label">E-mailadressen deelnemers (gescheiden door komma's)</label>
-                            <textarea name="emails" id="emails" class="form-control" rows="3" placeholder="jan@example.com, lisa@example.com" required></textarea>
+                            <label class="form-label">E-mails van deelnemers</label>
+                            <div id="email-inputs">
+                                <input type="email" name="emails[]" class="form-control mb-2">
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="addEmailInput()">+ E-mail</button>
                         </div>
 
-                        <button type="submit" class="btn btn-success w-100">Poll aanmaken</button>
+                        <button type="submit" class="btn btn-primary">Poll aanmaken</button>
                     </form>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
 
 <script>
-    function convertDatesToISO(input) {
-    return input
-        .split(',')
-        .map(dateStr => {
-            const [day, month, year] = dateStr.trim().split('-');
-            return `${year}-${month}-${day}`;
-        })
-        .join(', ');
+    function addDateInput() {
+        const container = document.getElementById('date-inputs');
+        const input = document.createElement('input');
+        input.type = 'date';
+        input.name = 'dates[]';
+        input.className = 'form-control mb-2';
+        container.appendChild(input);
+    }
+
+    function addEmailInput() {
+        const container = document.getElementById('email-inputs');
+        const input = document.createElement('input');
+        input.type = 'email';
+        input.name = 'emails[]';
+        input.className = 'form-control mb-2';
+        container.appendChild(input);
     }
 
     async function createPoll(event) {
@@ -75,13 +88,25 @@
 
         const form = event.target;
 
+        // Verzamel alle datums
+        const dateInputs = form.querySelectorAll('input[name="dates[]"]');
+        const dates = Array.from(dateInputs)
+            .map(input => input.value)
+            .filter(date => date); // Verwijder lege invoer
+
+        // Verzamel alle e-mails
+        const emailInputs = form.querySelectorAll('input[name="emails[]"]');
+        const emails = Array.from(emailInputs)
+            .map(input => input.value)
+            .filter(email => email); // Verwijder lege invoer
+
         const formData = {
             email_creator: form.email_creator.value,
             title: form.title.value,
             description: form.description.value,
             location: form.location.value,
-            dates: convertDatesToISO(form.dates.value),
-            emails: form.emails.value
+            dates: dates,
+            emails: emails
         };
 
         console.log('Form data:', formData);

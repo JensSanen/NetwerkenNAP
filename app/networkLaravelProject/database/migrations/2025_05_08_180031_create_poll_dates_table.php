@@ -22,6 +22,7 @@ return new class extends Migration
                   ->on('polls')
                   ->onDelete('cascade');
         });
+
     }
 
     public function down(): void

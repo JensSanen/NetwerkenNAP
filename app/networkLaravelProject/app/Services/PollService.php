@@ -7,12 +7,14 @@ use Throwable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 use App\Models\Poll;
 use App\Models\Participant;
 use App\Mail\PollCreated;
+use App\Mail\PollInvitation;
 use App\Mail\PollEnded;
 use App\Services\PollDateService;
 use App\Services\ParticipantService;
@@ -45,6 +47,14 @@ class PollService
         return $creator ?: null;
     }
 
+    public function getCreatorURL(Poll $poll): ?string
+    {
+        $creator = $this->getCreator($poll);
+        if ($creator) {
+            return url("/poll/{$poll->id}/vote/{$creator->id}/{$creator->vote_token}");
+        }
+        return null;
+    }
 
     private function createPoll(array $data): Poll
     {
@@ -67,7 +77,7 @@ class PollService
                 'location' => $data['location'],
             ]);
         } catch (ValidationException $e) {
-            Log::warning("PollService@createPoll - Validation error", [
+            Log::warning("PollService@createPoll - Validatie error", [
                 'errors' => $e->errors(),
                 'data' => $data
             ]);
@@ -78,15 +88,22 @@ class PollService
         }
     }
 
-    public function addDates(Poll $poll, string $dates): array
+    public function addDates(Poll $poll, array $dates): array
     {
-        $allDates = array_unique(array_map('trim', explode(',', $dates)));
         $pollDates = [];
 
-        foreach ($allDates as $date) {
+        foreach ($dates as $date) {
             try {
+                // skip als deze combinatie al bestaat
+                if ($poll->pollDates()->where('date', $date)->exists()) {
+                    throw ValidationException::withMessages([
+                        'dates' => ["De datum $date is al toegevoegd aan deze poll."]
+                    ]);
+                }
+
                 $pollDate = $this->pollDateService->createPollDate($poll->id, $date);
                 $pollDates[] = $pollDate;
+
             } catch (ValidationException $e) {
                 Log::warning("PollService@addDates - Ongeldige datum: $date", [
                     'poll_id' => $poll->id,
@@ -101,20 +118,27 @@ class PollService
                 throw $e;
             }
         }
+
         return $pollDates;
     }
 
 
-    public function addParticipants(Poll $poll, string $emails): array
+    public function addParticipants(Poll $poll, array $emails): array
     {
-        $allEmails = array_unique(array_map('trim', explode(',', $emails)));
-
         $participants = [];
 
-        foreach ($allEmails as $email) {
+        foreach ($emails as $email) {
             try {
+                // skip als e-mailadres al bestaat voor deze poll
+                if ($poll->participants()->where('email', $email)->exists()) {
+                    throw ValidationException::withMessages([
+                        'emails' => ["De deelnemer met e-mailadres $email bestaat al in deze poll."]
+                    ]);
+                }
+
                 $participant = $this->participantService->createParticipant($poll->id, $email);
                 $participants[] = $participant;
+
             } catch (ValidationException $e) {
                 Log::warning("PollService@addParticipants - Ongeldig e-mailadres: $email", [
                     'poll_id' => $poll->id,
@@ -129,22 +153,36 @@ class PollService
                 throw $e;
             }
         }
+
+        // verplaats mails naar afterCommit
+        DB::afterCommit(function () use ($participants) {
+            foreach ($participants as $participant) {
+                $url = $this->participantService->getParticipantURL($participant);
+                Mail::to($participant->email)->send(new PollInvitation($participant, $url));
+            }
+        });
+
         return $participants;
     }
 
     public function createPollWithDatesAndParticipants(array $data): Poll
     {
         try {
-            $poll = $this->createPoll($data);
-            $this->addDates($poll, $data['dates']);
-            $this->addParticipants($poll, $data['email_creator']);
-            $this->addParticipants($poll, $data['emails']);
-            $creator = $this->getCreator($poll);
-            $creator_url = url("/poll/{$poll->id}/vote/{$creator->id}/{$creator->vote_token}");
-            Mail::to($poll->email_creator)->send(new PollCreated($poll, $creator_url));
-            return $poll;
+            return DB::transaction(function () use ($data) {
+                $poll = $this->createPoll($data);
+                $this->addDates($poll, $data['dates']);
+                $this->addParticipants($poll, [$data['email_creator']]);
+                $this->addParticipants($poll, $data['emails']);
+
+                DB::afterCommit(function () use ($poll) {
+                    $creator_url = $this->getCreatorURL($poll);
+                    Mail::to($poll->email_creator)->send(new PollCreated($poll, $creator_url));
+                });
+
+                return $poll;
+            });
         } catch (ValidationException $e) {
-            Log::warning("PollService@createPollWithDatesAndParticipants - Validation error", [
+            Log::warning("PollService@createPollWithDatesAndParticipants - Validatie error", [
                 'errors' => $e->errors(),
                 'data' => $data
             ]);
@@ -153,6 +191,20 @@ class PollService
             Log::error("PollService@createPollWithDatesAndParticipants - Error: {$e->getMessage()}", ['data' => $data]);
             throw $e;
         }
+    }
+
+    public function getParticipantVotes(Poll $poll, Participant $participant): array
+    {
+        $votes = [];
+        foreach ($poll->pollDates as $date) {
+            $vote = $date->votes()->where('participant_id', $participant->id)->first();
+            if ($vote) {
+                $votes[$date->id] = 1;
+            } else {
+                $votes[$date->id] = null;
+            }
+        }
+        return $votes;
     }
 
     public function getPollVotes(Poll $poll): array
@@ -193,16 +245,23 @@ class PollService
     public function endPoll(Poll $poll): ?string
     {
         $bestDate = $this->determineBestDate($poll);
+        $poll->active = false;
+        $poll->save();
+
         if ($bestDate) {
             Log::info("PollService@endPoll - Poll {$poll->id} is beëindigd. Beste datum: $bestDate");
-            $participants = $this->getAllParticipants($poll);
-            foreach ($participants as $participant) {
-                Mail::to($participant->email)->send(new PollEnded($poll, $bestDate));
-            }
-            return $bestDate;
         }
-        Log::info("PollService@endPoll - Poll {$poll->id} is beëindigd. Geen stemmen.");
-        return null;
+        else {
+            Log::info("PollService@endPoll - Poll {$poll->id} is beëindigd. Geen stemmen.");
+        }
+
+        $participants = $this->getAllParticipants($poll);
+
+        foreach ($participants as $participant) {
+            $participantURL = $this->participantService->getParticipantURL($participant);
+            Mail::to($participant->email)->send(new PollEnded($poll, $bestDate, $participantURL));
+        }
+        return $bestDate;
     }
 
     public function checkIfEveryoneVotedAndEndPoll(Poll $poll): ?string

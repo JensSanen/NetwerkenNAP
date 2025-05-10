@@ -13,11 +13,14 @@ class PollEnded extends Mailable
 {
     public $poll;
     public $finalDate;
+    public $participantURL;
 
-    public function __construct(Poll $poll, $finalDate)
+    public function __construct(Poll $poll, $finalDate, $participantURL)
     {
         $this->poll = $poll;
         $this->finalDate = $finalDate;
+        $this->participantURL = $participantURL;
+
     }
 
     public function build()

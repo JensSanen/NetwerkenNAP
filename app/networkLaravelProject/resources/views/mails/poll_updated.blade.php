@@ -1,20 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <title>Nieuwe stem op poll</title>
+    <title>Nieuwe stem in poll</title>
 </head>
-<body>
-    <h2>Er is een nieuwe stem uitgebracht!</h2>
+<body style="font-family: Arial, sans-serif; background-color: #f6f6f6; padding: 30px;">
+    <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+        <h2 style="color: #333333; margin-top: 0;">📥 Nieuwe stem in poll "{{ $poll->title }}"</h2>
 
-    <p>
-        De deelnemer <strong>{{ $participant->email }}</strong> heeft zojuist gestemd op de poll:
-        <strong>{{ $poll->title }}</strong>.
-    </p>
+        <p style="font-size: 16px; color: #555555;">
+            De deelnemer <strong>{{ $participant->email }}</strong> heeft zojuist gestemd in jouw poll.
+        </p>
 
-    <p>Je kunt de poll bekijken via de gebruikelijke link.</p>
+        <p style="font-size: 16px; color: #555555;">
+            Je kunt de bijgewerkte resultaten bekijken via onderstaande knop:
+        </p>
 
-    <hr>
-    <small>Dit is een automatische melding van je stemronde.</small>
+        <p style="text-align: center; margin: 30px 0;">
+            <a href="{{ $creatorUrl }}"
+               style="background-color: #0d6efd; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                Bekijk pollresultaten
+            </a>
+        </p>
+    </div>
 </body>
 </html>

@@ -6,18 +6,45 @@ use Throwable;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 use App\Models\Participant;
-use App\Mail\PollInvitation;
 
 class ParticipantService
 {
+    public function getParticipantById(int $id): ?Participant
+    {
+        $participant = Participant::find($id);
+        return $participant ?: null;
+    }
     public function getParticipantByEmail(string $email): ?Participant
     {
         $participant = Participant::where('email', $email)->first();
         return $participant ?: null;
+    }
+
+    public function getParticipantURL(Participant $participant): ?string
+    {
+        if ($participant) {
+            return url("/poll/{$participant->poll_id}/vote/{$participant->id}/{$participant->vote_token}");
+        }
+        return null;
+    }
+
+    public function setParticipantVoted(int $id): void
+    {
+        try {
+            $participant = $this->getParticipantById($id);
+            if ($participant) {
+                $participant->has_voted = true;
+                $participant->save();
+            }
+        } catch (Throwable $e) {
+            Log::error("ParticipantService@setParticipantVoted - Error: {$e->getMessage()}", [
+                'participant_id' => $id,
+            ]);
+            throw $e;
+        }
     }
     public function createParticipant(int $poll_id, string $email): Participant
     {
@@ -39,14 +66,10 @@ class ParticipantService
                 'vote_token' => $vote_token,
             ]);
 
-
-            $vote_url = url("/poll/{$poll_id}/vote/{$participant->id}/{$vote_token}");
-            Mail::to($email)->send(new PollInvitation($participant, $vote_url));
-
             return $participant;
 
         } catch (ValidationException $e) {
-            Log::warning("ParticipantService@createPollDate - Validation error", [
+            Log::warning("ParticipantService@createPollDate - Validatie error", [
                 'errors' => $e->errors(),
                 'poll_id' => $poll_id,
                 'email' => $email,

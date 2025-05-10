@@ -27,10 +27,13 @@ class PollController extends Controller
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'location' => 'required|string|max:255',
-                'dates' => 'required|string',
-                'emails' => 'nullable|string'
+                'dates' => 'required|array|min:1',
+                'dates.*' => 'required|date',
+                'emails' => 'required|array|min:1',
+                'emails.*' => 'required|email|max:255'
             ]);
 
+            $poll = Null;
             $poll = $this->pollService->createPollWithDatesAndParticipants($validated);
 
             // Log de aanmaak van de poll
@@ -50,7 +53,8 @@ class PollController extends Controller
     {
         try {
             $validated = $request->validate([
-                'dates' => 'required|string',
+                'dates' => 'required|array|min:1',
+                'dates.*' => 'required|date',
             ]);
 
             $dates = $this->pollService->addDates($poll, $validated['dates']);
@@ -70,7 +74,8 @@ class PollController extends Controller
     public function addParticipants(Request $request, Poll $poll) {
         try {
             $validated = $request->validate([
-                'emails' => 'required|string',
+                'emails' => 'required|array|min:1',
+                'emails.*' => 'required|email|max:255'
             ]);
 
             $participants = $this->pollService->addParticipants($poll, $validated['emails']);
@@ -110,31 +115,27 @@ class PollController extends Controller
             abort(403, 'Deze deelnemer hoort niet bij deze poll.');
         }
 
+        $participantVotes = $this->pollService->getParticipantVotes($poll, $participant);
         $votes = $this->pollService->getPollVotes($poll);
-
-        // Check of participant het e-mailadres van de creator is
         $isCreator = $participant->email === $poll->email_creator;
+        $viewOnly = $poll->isEnded();
+
+        Log::info("PollController@showVotingPage", [
+            'poll_id' => $poll->id,
+            'participant_id' => $participant->id,
+            'votes' => $votes,
+            'participantVotes' => $participantVotes,
+            'isCreator' => $isCreator,
+            'viewOnly' => $viewOnly,
+        ]);
 
         return view('poll', [
             'poll' => $poll,
             'votes' => $votes,
+            'participantVotes' => $participantVotes,
             'participant' => $participant,
             'isCreator' => $isCreator,
-            'viewOnly' => false,
+            'viewOnly' => $viewOnly,
         ]);
     }
-
-    public function showVotingPageViewOnly(Poll $poll)
-    {
-        $votes = $this->pollService->getPollVotes($poll);
-
-        return view('poll', [
-            'poll' => $poll,
-            'votes' => $votes,
-            'participant' => null,
-            'isCreator' => false,
-            'viewOnly' => true,
-        ]);
-    }
-
 }

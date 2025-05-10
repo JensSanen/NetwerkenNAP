@@ -17,13 +17,6 @@
                         Beheer je poll
                     </a>
                 </p>
-                <p style="font-size: 14px; color: #888888;">
-                    Als je deze poll niet hebt aangemaakt, kun je deze e-mail negeren.
-                </p>
-                <hr style="margin-top: 30px; border: none; border-top: 1px solid #eeeeee;">
-                <p style="font-size: 12px; color: #aaaaaa; text-align: center;">
-                    &copy; {{ date('Y') }} JouwPollPlatform. Alle rechten voorbehouden.
-                </p>
             </td>
         </tr>
     </table>

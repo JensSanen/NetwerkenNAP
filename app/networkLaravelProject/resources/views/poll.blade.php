@@ -13,60 +13,60 @@
 
 <div class="container my-5">
 
-    <!-- Modal: Deelnemer uitnodigen -->
-    <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <form id="inviteForm" class="modal-content" onsubmit="submitInvite(event)">
-        <div class="modal-header">
-            <h5 class="modal-title" id="inviteModalLabel">Deelnemer uitnodigen</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Sluiten"></button>
+     <!-- Modal: Deelnemer uitnodigen -->
+     <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form id="inviteForm" class="modal-content" onsubmit="submitInvite(event)">
+                <input type="hidden" id="invite_poll_id" name="poll_id" value="{{ $poll->id }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="inviteModalLabel">Deelnemer uitnodigen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="email-inputs">
+                        <input type="email" name="emails[]" class="form-control mb-2" required>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="addEmailInput()">+ E-mail</button>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Verstuur uitnodiging</button>
+                </div>
+            </form>
         </div>
-        <div class="modal-body">
-            <input type="hidden" id="invite_poll_id">
-            <div class="mb-3">
-            <label for="emails" class="form-label">E-mailadressen (gescheiden door komma's)</label>
-            <input type="text" name="emails" class="form-control" id="invite_emails" required>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button type="submit" class="btn btn-primary">Uitnodigen</button>
-        </div>
-        </form>
-    </div>
     </div>
 
     <!-- Modal: Datum toevoegen -->
-    <div class="modal fade" id="dateModal" tabindex="-1" aria-labelledby="dateModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <form id="dateForm" class="modal-content" onsubmit="submitDate(event)">
-        <div class="modal-header">
-            <h5 class="modal-title" id="dateModalLabel">Datum toevoegen</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Sluiten"></button>
+    <div class="modal fade" id="addDateModal" tabindex="-1" aria-labelledby="addDateModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form id="addDateForm" class="modal-content" onsubmit="submitDates(event)">
+                <input type="hidden" id="date_poll_id" name="poll_id" value="{{ $poll->id }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addDateModalLabel">Datum toevoegen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="date-inputs">
+                        <input type="date" name="dates[]" class="form-control mb-2" required>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="addDateInput()">+ Datum</button>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Voeg toe</button>
+                </div>
+            </form>
         </div>
-        <div class="modal-body">
-            <input type="hidden" id="date_poll_id">
-            <div class="mb-3">
-            <label for="new_date" class="form-label">Datum (DD-MM-YYYY)</label>
-            <input type="text" class="form-control" id="new_date" required>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button type="submit" class="btn btn-secondary">Toevoegen</button>
-        </div>
-        </form>
-    </div>
     </div>
 
     @if($viewOnly)
         <div class="alert alert-info">
-            Je kunt deze poll alleen bekijken. Je kunt geen stemmen uitbrengen.
+            De poll is afgelopen, je kunt niet meer stemmen.
         </div>
     @endif
 
     @if($isCreator && !$viewOnly)
         <div class="card mb-4">
             <div class="card-body">
-                <h5>🎉 Je bent de maker van deze poll</h5>
+                <h5>Je bent de maker van deze poll</h5>
                 <a href="javascript:void(0);" class="btn btn-outline-primary" onclick="inviteParticipants({{ $poll->id }})">Deelnemers uitnodigen</a>
                 <a href="javascript:void(0);" class="btn btn-outline-secondary" onclick="addDates({{ $poll->id }})">Datums toevoegen</a>
                 <button type="button" class="btn btn-danger" onclick="endPoll({{ $poll->id }})">Poll beëindigen</button>
@@ -93,12 +93,18 @@
                     @foreach($poll->pollDates as $date)
                         @php
                             $carbonDate = \Carbon\Carbon::parse($date->date);
-                            $formatted = $carbonDate->translatedFormat('l j F Y'); // bijv. "maandag 10 juni 2025"
+                            $formatted = $carbonDate->translatedFormat('l j F Y');
                             $voteCount = $votes[$date->date] ?? 0;
+                            $hasVoted = array_key_exists($date->id, $participantVotes) && $participantVotes[$date->id] !== null;
                         @endphp
 
                         <label class="list-group-item d-flex align-items-center">
-                            <input class="form-check-input me-3 date-checkbox" type="checkbox" value="{{ $date->id }}" id="date{{ $date->id }}" @if($viewOnly) disabled @endif>
+                            <input class="form-check-input me-3 date-checkbox" type="checkbox"
+                                value="{{ $date->id }}"
+                                id="date{{ $date->id }}"
+                                @if($viewOnly) disabled @endif
+                                @if($hasVoted) checked @endif>
+
                             <div class="flex-grow-1">
                                 <div class="fw-semibold">{{ $formatted }}</div>
                             </div>
@@ -136,6 +142,107 @@
 </div>
 
 <script>
+    function inviteParticipants(pollId) {
+        document.getElementById('invite_poll_id').value = pollId;
+        new bootstrap.Modal(document.getElementById('inviteModal')).show();
+    }
+
+    function addEmailInput() {
+        const container = document.getElementById('email-inputs');
+        const input = document.createElement('input');
+        input.type = 'email';
+        input.name = 'emails[]';
+        input.className = 'form-control mb-2';
+        container.appendChild(input);
+    }
+
+    async function submitInvite(event) {
+        event.preventDefault();
+        const form = event.target;
+        const emailInputs = form.querySelectorAll('input[name="emails[]"]');
+        const emails = Array.from(emailInputs).map(input => input.value).filter(Boolean);
+
+        console.log(emails);
+
+        try {
+            const response = await fetch('/api/poll/{{ $poll->id }}/addParticipants', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ emails })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                let errorMsg = data.message || 'Onbekende fout';
+                if (data.errors) {
+                    errorMsg = Object.values(data.errors).flat().join('\n');
+                }
+                throw new Error(errorMsg);
+            }
+
+            form.reset();
+            alert('Uitnodigingen verzonden!');
+        } catch (error) {
+            console.error('Fout bij submitInvite:', error);
+            alert('Fout bij verzenden uitnodiging:\n' + error.message);
+        }
+    }
+
+    function addDates(pollId) {
+        document.getElementById('date_poll_id').value = pollId;
+        new bootstrap.Modal(document.getElementById('addDateModal')).show();
+    }
+
+    function addDateInput() {
+        const container = document.getElementById('date-inputs');
+        const input = document.createElement('input');
+        input.type = 'date';
+        input.name = 'dates[]';
+        input.className = 'form-control mb-2';
+        container.appendChild(input);
+    }
+
+    async function submitDates(event) {
+        event.preventDefault();
+        const form = event.target;
+        const dateInputs = form.querySelectorAll('input[name="dates[]"]');
+        const dates = Array.from(dateInputs).map(input => input.value).filter(Boolean);
+
+        console.log(dates);
+
+        try {
+            const response = await fetch('/api/poll/{{ $poll->id }}/addDates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ dates })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                let errorMsg = data.message || 'Onbekende fout';
+                if (data.errors) {
+                    errorMsg = Object.values(data.errors).flat().join('\n');
+                }
+                throw new Error(errorMsg);
+            }
+
+            form.reset();
+            alert('Datums toegevoegd!');
+            location.reload(); // herladen om nieuwe datums weer te geven
+        } catch (error) {
+            console.error('Fout bij submitDates:', error);
+            alert('Fout bij toevoegen datums:\n' + error.message);
+        }
+    }
+
     async function vote(event) {
         event.preventDefault();
 
@@ -152,7 +259,7 @@
                 'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             },
-            body: JSON.stringify({ poll_id, participant_id, dates })
+            body: JSON.stringify({ poll_id, participant_id, dates, vote_token: "{{ $participant->vote_token }}" })
         });
 
         const result = await response.json();
@@ -188,84 +295,6 @@
             }
         } catch (error) {
             console.error("Netwerkfout bij beëindigen van poll:", error);
-        }
-    }
-
-    function inviteParticipants(pollId) {
-        document.getElementById('invite_poll_id').value = pollId;
-        new bootstrap.Modal(document.getElementById('inviteModal')).show();
-    }
-
-    async function submitInvite(event) {
-        event.preventDefault();
-        const pollId = document.getElementById('invite_poll_id').value;
-        const emails = document.getElementById('invite_emails').value;
-
-        try {
-            const response = await fetch(`/api/poll/${pollId}/participants`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({emails})
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-                bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
-                alert("Deelnemer uitgenodigd.");
-                location.reload();
-            } else {
-                alert("Fout: " + (result.message || "Onbekende fout"));
-            }
-        } catch (error) {
-            console.error(error);
-        }
-    }
-
-    function convertDatesToISO(input) {
-    return input
-        .split(',')
-        .map(dateStr => {
-            const [day, month, year] = dateStr.trim().split('-');
-            return `${year}-${month}-${day}`;
-        })
-        .join(', ');
-    }
-
-    function addDates(pollId) {
-        document.getElementById('date_poll_id').value = pollId;
-        new bootstrap.Modal(document.getElementById('dateModal')).show();
-    }
-
-    async function submitDate(event) {
-        event.preventDefault();
-        const pollId = document.getElementById('date_poll_id').value;
-        const date = convertDatesToISO(document.getElementById('new_date').value);
-
-        try {
-            const response = await fetch(`/api/poll/${pollId}/dates`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({ dates: date})
-            });
-
-            const result = await response.json();
-
-            if (response.ok) {
-                bootstrap.Modal.getInstance(document.getElementById('dateModal')).hide();
-                alert("Datum toegevoegd.");
-                location.reload();
-            } else {
-                alert("Fout: " + (result.message || "Onbekende fout"));
-            }
-        } catch (error) {
-            console.error(error);
         }
     }
 

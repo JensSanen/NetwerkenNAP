@@ -13,7 +13,12 @@ class Poll extends Model
         'email_creator',
         'title',
         'description',
-        'location'
+        'location',
+        'active',
+    ];
+
+    protected $casts = [
+        'active' => 'boolean',
     ];
 
     public function pollDates()
@@ -23,5 +28,10 @@ class Poll extends Model
     public function participants()
     {
         return $this->hasMany(Participant::class, 'poll_id', 'id');
+    }
+
+    public function isEnded()
+    {
+        return $this->active === false;
     }
 }

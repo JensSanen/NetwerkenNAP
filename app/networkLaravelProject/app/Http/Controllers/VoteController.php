@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
+use App\Models\Participant;
 use App\Services\VoteService;
 use App\Services\PollService;
 
@@ -28,7 +29,14 @@ class VoteController extends Controller
                 'participant_id' => 'required|integer|exists:participants,id',
                 'dates' => 'required|array',
                 'dates.*' => 'integer|exists:poll_dates,id',
+                'vote_token' => 'required|string',
             ]);
+
+            if (Participant::where('id', $validated['participant_id'])
+                ->where('vote_token', $validated['vote_token'])
+                ->doesntExist()) {
+                return response()->json(['message' => 'Ongeldige stemtoken'], 403);
+            }
 
             $poll = $this->pollService->getPollById($validated['poll_id']);
 

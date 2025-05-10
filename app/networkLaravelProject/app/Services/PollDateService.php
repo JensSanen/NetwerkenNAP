@@ -31,7 +31,7 @@ class PollDateService
                 'date' => $parsedDate->toDateString(),
             ]);
         } catch (ValidationException $e) {
-            Log::warning("PollDateService@createPollDate - Validation error", [
+            Log::warning("PollDateService@createPollDate - Validatie error", [
                 'errors' => $e->errors(),
                 'poll_id' => $poll_id,
                 'date' => $date,

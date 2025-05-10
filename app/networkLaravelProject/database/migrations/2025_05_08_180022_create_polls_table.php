@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('title', 255)->nullable(false);
             $table->text('description')->nullable();
             $table->string('location', 255)->nullable(false);
+            $table->boolean('active')->default(true);
             $table->timestamps();
         });
     }
