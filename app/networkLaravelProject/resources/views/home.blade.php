@@ -41,6 +41,13 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="show_votes" class="form-label">Stemmen zichtbaar voor deelnemers?</label>
+                            <select name="show_votes" class="form-select">
+                                <option value="1">Ja</option>
+                                <option value="0">Nee</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Datums</label>
                             <div id="date-inputs">
                                 <input type="date" name="dates[]" class="form-control mb-2">
@@ -105,6 +112,7 @@
             title: form.title.value,
             description: form.description.value,
             location: form.location.value,
+            show_votes: form.show_votes.value,
             dates: dates,
             emails: emails
         };

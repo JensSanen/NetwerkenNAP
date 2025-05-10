@@ -27,6 +27,7 @@ class PollController extends Controller
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'location' => 'required|string|max:255',
+                'show_votes' => 'required|boolean',
                 'dates' => 'required|array|min:1',
                 'dates.*' => 'required|date',
                 'emails' => 'required|array|min:1',

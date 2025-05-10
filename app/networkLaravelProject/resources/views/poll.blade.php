@@ -108,7 +108,9 @@
                             <div class="flex-grow-1">
                                 <div class="fw-semibold">{{ $formatted }}</div>
                             </div>
-                            <span class="badge bg-secondary ms-2">{{ $voteCount }} stemmen</span>
+                            @if ($viewOnly || $isCreator || $poll->show_votes)
+                                <span class="badge bg-secondary ms-2">{{ $voteCount }} stemmen</span>
+                            @endif
                         </label>
                     @endforeach
                 </div>

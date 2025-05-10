@@ -64,6 +64,7 @@ class PollService
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'location' => 'required|string|max:255',
+                'show_votes' => 'required|boolean',
             ]);
 
             if ($validator->fails()) {
@@ -75,6 +76,7 @@ class PollService
                 'title' => $data['title'],
                 'description' => $data['description'] ?? '',
                 'location' => $data['location'],
+                'show_votes' => $data['show_votes'],
             ]);
         } catch (ValidationException $e) {
             Log::warning("PollService@createPoll - Validatie error", [

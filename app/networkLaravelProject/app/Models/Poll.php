@@ -14,11 +14,13 @@ class Poll extends Model
         'title',
         'description',
         'location',
+        'show_votes',
         'active',
     ];
 
     protected $casts = [
         'active' => 'boolean',
+        'show_votes' => 'boolean',
     ];
 
     public function pollDates()
