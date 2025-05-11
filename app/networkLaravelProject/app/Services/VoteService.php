@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 use App\Mail\PollUpdated;
+use App\Models\Poll;
 use App\Models\Participant;
 use App\Models\Vote;
 
@@ -22,13 +23,11 @@ class VoteService
         $this->participantService = $participantService;
         $this->pollService = $pollService;
     }
-    public function storeVote(array $data): void
+    public function storeVote(array $data, Participant $participant, Poll $poll): void
     {
         try {
             // Validatie
             $validator = Validator::make($data, [
-                'poll_id' => 'required|integer|exists:polls,id',
-                'participant_id' => 'required|integer|exists:participants,id',
                 'dates' => 'required|array',
                 'dates.*' => 'integer|exists:poll_dates,id',
             ]);
@@ -38,21 +37,18 @@ class VoteService
             }
 
             // Verwijder oude stemmen
-            Vote::where('participant_id', $data['participant_id'])->delete();
+            Vote::where('participant_id', $participant->id)->delete();
 
             // Nieuwe stemmen
             foreach ($data['dates'] as $dateId) {
                 Vote::create([
                     'poll_date_id' => $dateId,
-                    'participant_id' => $data['participant_id'],
+                    'participant_id' => $participant->id,
                 ]);
             }
 
             // Markeer als gestemd
-            $participant = $this->participantService->getParticipantById($data['participant_id']);
             $this->participantService->setParticipantVoted($participant->id);
-
-            $poll = $this->pollService->getPollById($data['poll_id']);
             $creator_url = $this->pollService->getCreatorURL($poll);
 
             Mail::to($poll->email_creator)->send(new PollUpdated($poll, $participant, $creator_url));

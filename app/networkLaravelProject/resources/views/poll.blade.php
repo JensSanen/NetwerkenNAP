@@ -173,7 +173,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 },
-                body: JSON.stringify({ emails })
+                body: JSON.stringify({ emails, vote_token: "{{ $participant->vote_token }}" })
             });
 
             const data = await response.json();
@@ -223,7 +223,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 },
-                body: JSON.stringify({ dates })
+                body: JSON.stringify({ dates, vote_token: "{{ $participant->vote_token }}" })
             });
 
             const data = await response.json();
@@ -261,7 +261,7 @@
                 'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             },
-            body: JSON.stringify({ poll_id, participant_id, dates, vote_token: "{{ $participant->vote_token }}" })
+            body: JSON.stringify({ dates, vote_token: "{{ $participant->vote_token }}" })
         });
 
         const result = await response.json();
@@ -284,7 +284,8 @@
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
+                },
+                body: JSON.stringify({ vote_token: "{{ $participant->vote_token }}" })
             });
 
             const result = await response.json();
@@ -328,7 +329,7 @@
             })
             .catch(error => console.error('Error fetching weather data:', error));
     }
-    // fetchWeatherForecast();
+    fetchWeatherForecast();
 </script>
 
 </body>

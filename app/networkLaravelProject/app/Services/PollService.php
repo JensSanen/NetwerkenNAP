@@ -56,6 +56,12 @@ class PollService
         return null;
     }
 
+    public function checkVoteTokenIsOfCreator(Poll $poll, string $vote_token): bool
+    {
+        $creator = $this->getCreator($poll);
+        return $creator && $creator->vote_token === $vote_token;
+    }
+
     private function createPoll(array $data): Poll
     {
         try {
@@ -124,14 +130,12 @@ class PollService
         return $pollDates;
     }
 
-
     public function addParticipants(Poll $poll, array $emails): array
     {
         $participants = [];
 
         foreach ($emails as $email) {
             try {
-                // skip als e-mailadres al bestaat voor deze poll
                 if ($poll->participants()->where('email', $email)->exists()) {
                     throw ValidationException::withMessages([
                         'emails' => ["De deelnemer met e-mailadres $email bestaat al in deze poll."]
@@ -156,7 +160,6 @@ class PollService
             }
         }
 
-        // verplaats mails naar afterCommit
         DB::afterCommit(function () use ($participants) {
             foreach ($participants as $participant) {
                 $url = $this->participantService->getParticipantURL($participant);

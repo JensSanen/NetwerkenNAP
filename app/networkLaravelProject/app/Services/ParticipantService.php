@@ -57,6 +57,7 @@ class ParticipantService
             if ($validator->fails()) {
                 throw new ValidationException($validator);
             }
+
             // Generate a unique token for the participant
             $vote_token = Str::random(8);
 

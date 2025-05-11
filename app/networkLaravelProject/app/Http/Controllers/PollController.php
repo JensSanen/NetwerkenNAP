@@ -34,7 +34,6 @@ class PollController extends Controller
                 'emails.*' => 'required|email|max:255'
             ]);
 
-            $poll = Null;
             $poll = $this->pollService->createPollWithDatesAndParticipants($validated);
 
             // Log de aanmaak van de poll
@@ -56,7 +55,12 @@ class PollController extends Controller
             $validated = $request->validate([
                 'dates' => 'required|array|min:1',
                 'dates.*' => 'required|date',
+                'vote_token' => 'required|string',
             ]);
+
+            if (!$this->pollService->checkVoteTokenIsOfCreator($poll, $validated['vote_token'])) {
+                return response()->json(['message' => 'Ongeldige stemtoken: stemtoken komt niet overeen met die van de eigenaar.'], 403);
+            };
 
             $dates = $this->pollService->addDates($poll, $validated['dates']);
 
@@ -76,8 +80,13 @@ class PollController extends Controller
         try {
             $validated = $request->validate([
                 'emails' => 'required|array|min:1',
-                'emails.*' => 'required|email|max:255'
+                'emails.*' => 'required|email|max:255',
+                'vote_token' => 'required|string',
             ]);
+
+            if (!$this->pollService->checkVoteTokenIsOfCreator($poll, $validated['vote_token'])) {
+                return response()->json(['message' => 'Ongeldige stemtoken: stemtoken komt niet overeen met die van de eigenaar.'], 403);
+            };
 
             $participants = $this->pollService->addParticipants($poll, $validated['emails']);
 
@@ -95,6 +104,14 @@ class PollController extends Controller
 
     public function endPoll(Poll $poll) {
         try {
+            $validated = request()->validate([
+                'vote_token' => 'required|string',
+            ]);
+
+            if (!$this->pollService->checkVoteTokenIsOfCreator($poll, $validated['vote_token'])) {
+                return response()->json(['message' => 'Ongeldige stemtoken: stemtoken komt niet overeen met die van de eigenaar.'], 403);
+            };
+
             $date = $this->pollService->endPoll($poll);
             return response()->json(['message' => 'Poll succesvol beëindigd', 'date' => $date], 200);
         } catch (ValidationException $e) {
